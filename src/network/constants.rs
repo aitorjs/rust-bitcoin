@@ -70,7 +70,9 @@ user_enum! {
         /// Bitcoin's signet
         Signet <-> "signet",
         /// Bitcoin's regtest
-        Regtest <-> "regtest"
+        Regtest <-> "regtest",
+        /// Bitcoin's custom signet
+        CSignet <-> "csignet"
     }
 }
 
@@ -82,7 +84,7 @@ impl Network {
     /// ```rust
     /// use bitcoin::network::constants::Network;
     ///
-    /// assert_eq!(Some(Network::Bitcoin), Network::from_magic(0xD9B4BEF9));
+    /// assert_eq!(Some(Network::Bitcoin), Network::from_magic(0x8DE45DA0));
     /// assert_eq!(None, Network::from_magic(0xFFFFFFFF));
     /// ```
     pub fn from_magic(magic: u32) -> Option<Network> {
@@ -92,6 +94,7 @@ impl Network {
             0x0709110B => Some(Network::Testnet),
             0x40CF030A => Some(Network::Signet),
             0xDAB5BFFA => Some(Network::Regtest),
+            0x8DE45DA0 => Some(Network::CSignet),
             _ => None
         }
     }
@@ -114,6 +117,7 @@ impl Network {
             Network::Testnet => 0x0709110B,
             Network::Signet  => 0x40CF030A,
             Network::Regtest => 0xDAB5BFFA,
+            Network::CSignet => 0x8DE45DA0,
         }
     }
 }
