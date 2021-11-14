@@ -94,7 +94,7 @@ impl Network {
             0x0709110B => Some(Network::Testnet),
             0x40CF030A => Some(Network::Signet),
             0xDAB5BFFA => Some(Network::Regtest),
-            0x8DE45DA0 => Some(Network::CSignet),
+            0xA05DE48D => Some(Network::CSignet),
             _ => None
         }
     }
@@ -117,7 +117,7 @@ impl Network {
             Network::Testnet => 0x0709110B,
             Network::Signet  => 0x40CF030A,
             Network::Regtest => 0xDAB5BFFA,
-            Network::CSignet => 0x8DE45DA0,
+            Network::CSignet => 0xa05DE48D,
         }
     }
 }
