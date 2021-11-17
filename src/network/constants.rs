@@ -36,7 +36,7 @@
 //!
 //! assert_eq!(&bytes[..], &[0xF9, 0xBE, 0xB4, 0xD9]);
 //! ```
-
+use std::env;
 use core::{fmt, ops, convert::From};
 
 use io;
@@ -84,7 +84,7 @@ impl Network {
     /// ```rust
     /// use bitcoin::network::constants::Network;
     ///
-    /// assert_eq!(Some(Network::Bitcoin), Network::from_magic(0x8DE45DA0));
+    /// assert_eq!(Some(Network::Bitcoin), Network::from_magic(0xD9B4BEF9));
     /// assert_eq!(None, Network::from_magic(0xFFFFFFFF));
     /// ```
     pub fn from_magic(magic: u32) -> Option<Network> {
@@ -94,8 +94,19 @@ impl Network {
             0x0709110B => Some(Network::Testnet),
             0x40CF030A => Some(Network::Signet),
             0xDAB5BFFA => Some(Network::Regtest),
-            0xA05DE48D => Some(Network::CSignet),
-            _ => None
+            _ => {
+                let signet_magic = env::var("SIGNET_MAGIC").unwrap();
+                if !signet_magic.is_empty() {
+                    let signet_magic = u32::from_str_radix(&signet_magic.as_str(), 16).unwrap();
+                    // reverse de dos en dos
+                    
+                    if magic == signet_magic {
+                        return Some(Network::CSignet);
+                    };
+                }
+                
+                None
+            }
         }
     }
 
@@ -117,7 +128,10 @@ impl Network {
             Network::Testnet => 0x0709110B,
             Network::Signet  => 0x40CF030A,
             Network::Regtest => 0xDAB5BFFA,
-            Network::CSignet => 0xa05DE48D,
+            Network::CSignet => {
+                let signet_magic = env::var("SIGNET_MAGIC").unwrap();
+                u32::from_str_radix(&signet_magic.as_str(), 16).unwrap()
+            }
         }
     }
 }
