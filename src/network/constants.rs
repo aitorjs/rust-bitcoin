@@ -95,19 +95,15 @@ impl Network {
             0x40CF030A => Some(Network::Signet),
             0xDAB5BFFA => Some(Network::Regtest),
             _ => {
-                let signet_magic = match env::var("SIGNET_MAGIC") {
-                    Ok(sm) => sm,
-                    Err(_) => String::new(),
-                };
-
+                let signet_magic = Network::get_signet_magic();
                 if !signet_magic.is_empty() {
-                    let signet_magic = u32::from_str_radix(&signet_magic.as_str(), 16).unwrap();
-                    // reverse de dos en dos
+                    let signet_magic = Network::to_be(signet_magic);
                     
                     if magic == signet_magic {
                         return Some(Network::CSignet);
                     };
                 }
+                
                 None
             }
         }
@@ -132,19 +128,25 @@ impl Network {
             Network::Signet  => 0x40CF030A,
             Network::Regtest => 0xDAB5BFFA,
             Network::CSignet => {
-                let signet_magic = match env::var("SIGNET_MAGIC") {
-                    Ok(sm) => sm,
-                    Err(_) => String::new(),
-                };
-                
+                let signet_magic = Network::get_signet_magic();
                 if !signet_magic.is_empty() {
-                    u32::from_str_radix(&signet_magic.as_str(), 16).unwrap()
-                    // reverse de dos en dos
+                    Network::to_be(signet_magic)
                 } else {
                     0x40CF030A
                 }
             }
         }
+    }
+
+    fn get_signet_magic() -> String {
+        match env::var("SIGNET_MAGIC") {
+            Ok(sm) => sm,
+            Err(_) => String::new(),
+        }
+    }
+
+    fn to_be(magic: String) -> u32 {
+        u32::from_str_radix(&magic.as_str(), 16).unwrap().to_be()
     }
 }
 
