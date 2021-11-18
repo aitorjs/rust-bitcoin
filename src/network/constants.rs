@@ -95,7 +95,11 @@ impl Network {
             0x40CF030A => Some(Network::Signet),
             0xDAB5BFFA => Some(Network::Regtest),
             _ => {
-                let signet_magic = env::var("SIGNET_MAGIC").unwrap();
+                let signet_magic = match env::var("SIGNET_MAGIC") {
+                    Ok(sm) => sm,
+                    Err(_) => String::new(),
+                };
+
                 if !signet_magic.is_empty() {
                     let signet_magic = u32::from_str_radix(&signet_magic.as_str(), 16).unwrap();
                     // reverse de dos en dos
@@ -104,7 +108,6 @@ impl Network {
                         return Some(Network::CSignet);
                     };
                 }
-                
                 None
             }
         }
@@ -129,8 +132,17 @@ impl Network {
             Network::Signet  => 0x40CF030A,
             Network::Regtest => 0xDAB5BFFA,
             Network::CSignet => {
-                let signet_magic = env::var("SIGNET_MAGIC").unwrap();
-                u32::from_str_radix(&signet_magic.as_str(), 16).unwrap()
+                let signet_magic = match env::var("SIGNET_MAGIC") {
+                    Ok(sm) => sm,
+                    Err(_) => String::new(),
+                };
+                
+                if !signet_magic.is_empty() {
+                    u32::from_str_radix(&signet_magic.as_str(), 16).unwrap()
+                    // reverse de dos en dos
+                } else {
+                    0x40CF030A
+                }
             }
         }
     }
