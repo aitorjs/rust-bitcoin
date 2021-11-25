@@ -100,7 +100,7 @@ impl Network {
                     let signet_magic = Network::to_be(signet_magic);
                     
                     if magic == signet_magic {
-                        return Some(Network::CSignet);
+                        return Some(Network::CSignet)
                     };
                 }
                 
@@ -130,10 +130,10 @@ impl Network {
             Network::CSignet => {
                 let signet_magic = Network::get_signet_magic();
                 if !signet_magic.is_empty() {
-                    Network::to_be(signet_magic)
-                } else {
-                    0x40CF030A
-                }
+                    return Network::to_be(signet_magic)
+                } 
+                
+                0x40CF030A
             }
         }
     }
@@ -328,6 +328,8 @@ mod tests {
 
     #[test]
     fn serialize_test() {
+        let signet_magic = Network::get_signet_magic();
+
         assert_eq!(
             serialize(&Network::Bitcoin.magic()),
             &[0xf9, 0xbe, 0xb4, 0xd9]
@@ -345,6 +347,19 @@ mod tests {
             &[0xfa, 0xbf, 0xb5, 0xda]
         );
 
+        if !&signet_magic.is_empty() {
+            assert_eq!(
+                // sacar vector cada dos bytes en hexadecimal
+                serialize(&Network::CSignet.magic()), // 8d e4 5d a0
+                &[0x8d, 0xe4, 0x5d, 0xa0]
+            );
+        } else {
+            assert_eq!(
+                serialize(&Network::CSignet.magic()),
+                &[0x0a, 0x03, 0xcf, 0x40]
+            );
+        };
+        
         assert_eq!(
             deserialize(&[0xf9, 0xbe, 0xb4, 0xd9]).ok(),
             Some(Network::Bitcoin.magic())
@@ -361,6 +376,18 @@ mod tests {
             deserialize(&[0xfa, 0xbf, 0xb5, 0xda]).ok(),
             Some(Network::Regtest.magic())
         );
+
+        if !signet_magic.is_empty() {
+            assert_eq!(
+                deserialize(&[0x8d, 0xe4, 0x5d, 0xa0]).ok(),
+                Some(Network::CSignet.magic())
+            );
+        } else {
+            assert_eq!(
+                deserialize(&[0x0a, 0x03, 0xcf, 0x40]).ok(),
+                Some(Network::CSignet.magic())
+            );
+        }
     }
 
     #[test]
@@ -369,11 +396,13 @@ mod tests {
         assert_eq!(Network::Testnet.to_string(), "testnet");
         assert_eq!(Network::Regtest.to_string(), "regtest");
         assert_eq!(Network::Signet.to_string(), "signet");
+        assert_eq!(Network::CSignet.to_string(), "csignet");
 
         assert_eq!("bitcoin".parse::<Network>().unwrap(), Network::Bitcoin);
         assert_eq!("testnet".parse::<Network>().unwrap(), Network::Testnet);
         assert_eq!("regtest".parse::<Network>().unwrap(), Network::Regtest);
         assert_eq!("signet".parse::<Network>().unwrap(), Network::Signet);
+        assert_eq!("csignet".parse::<Network>().unwrap(), Network::CSignet);
         assert!("fakenet".parse::<Network>().is_err());
     }
 
