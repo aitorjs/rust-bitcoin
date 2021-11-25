@@ -348,10 +348,14 @@ mod tests {
         );
 
         if !&signet_magic.is_empty() {
+            let signet_magic: Vec<u8> = (
+                &[u8::from_str_radix(&signet_magic[0..2], 16).unwrap(),
+                u8::from_str_radix(&signet_magic[2..4], 16).unwrap(),
+                u8::from_str_radix(&signet_magic[4..6], 16).unwrap(),
+                u8::from_str_radix(&signet_magic[6..8], 16).unwrap()]).to_vec();
             assert_eq!(
-                // sacar vector cada dos bytes en hexadecimal
-                serialize(&Network::CSignet.magic()), // 8d e4 5d a0
-                &[0x8d, 0xe4, 0x5d, 0xa0]
+                serialize(&Network::CSignet.magic()),
+                signet_magic
             );
         } else {
             assert_eq!(
@@ -359,7 +363,6 @@ mod tests {
                 &[0x0a, 0x03, 0xcf, 0x40]
             );
         };
-        
         assert_eq!(
             deserialize(&[0xf9, 0xbe, 0xb4, 0xd9]).ok(),
             Some(Network::Bitcoin.magic())
@@ -378,8 +381,14 @@ mod tests {
         );
 
         if !signet_magic.is_empty() {
+            let signet_magic: Vec<u8> = (
+                &[u8::from_str_radix(&signet_magic[0..2], 16).unwrap(),
+                u8::from_str_radix(&signet_magic[2..4], 16).unwrap(),
+                u8::from_str_radix(&signet_magic[4..6], 16).unwrap(),
+                u8::from_str_radix(&signet_magic[6..8], 16).unwrap()]).to_vec();
+
             assert_eq!(
-                deserialize(&[0x8d, 0xe4, 0x5d, 0xa0]).ok(),
+                deserialize(&signet_magic).ok(),
                 Some(Network::CSignet.magic())
             );
         } else {
