@@ -11,13 +11,16 @@
 // If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 //
 
-//! Taproot
+//! Bitcoin Taproot.
+//!
+//! This module provides support for taproot tagged hashes.
 //!
 use prelude::*;
 use io;
 use secp256k1::{self, Secp256k1};
 
 use core::fmt;
+use core::cmp::Reverse;
 #[cfg(feature = "std")]
 use std::error;
 
@@ -208,9 +211,9 @@ impl TaprootSpendInfo {
         I: IntoIterator<Item = (u64, Script)>,
         C: secp256k1::Verification,
     {
-        let mut node_weights = BinaryHeap::<(u64, NodeInfo)>::new();
+        let mut node_weights = BinaryHeap::<(Reverse<u128>, NodeInfo)>::new();
         for (p, leaf) in script_weights {
-            node_weights.push((p, NodeInfo::new_leaf_with_ver(leaf, LeafVersion::default())));
+            node_weights.push((Reverse(p as u128), NodeInfo::new_leaf_with_ver(leaf, LeafVersion::default())));
         }
         if node_weights.is_empty() {
             return Err(TaprootBuilderError::IncompleteTree);
@@ -220,7 +223,10 @@ impl TaprootSpendInfo {
             let (p1, s1) = node_weights.pop().expect("len must be at least two");
             let (p2, s2) = node_weights.pop().expect("len must be at least two");
             // Insert the sum of first two in the tree as a new node
-            let p = p1.checked_add(p2).ok_or(TaprootBuilderError::ScriptWeightOverflow)?;
+            // N.B.: p1 + p2 can never actually saturate as you would need to have 2**64 max u64s
+            // from the input to overflow. However, saturating is a reasonable behavior here as
+            // huffman tree construction would treat all such elements as "very likely".
+            let p = Reverse(p1.0.saturating_add(p2.0));
             node_weights.push((p, NodeInfo::combine(s1, s2)?));
         }
         // Every iteration of the loop reduces the node_weights.len() by exactly 1
@@ -337,7 +343,7 @@ impl TaprootSpendInfo {
         Some(ControlBlock {
             internal_key: self.internal_key,
             output_key_parity: self.output_key_parity,
-            leaf_version: LeafVersion::default(),
+            leaf_version: script_ver.1,
             merkle_branch: smallest.clone(),
         })
     }
@@ -801,8 +807,6 @@ pub enum TaprootBuilderError {
     IncompleteTree,
     /// Called finalize on a empty tree
     EmptyTree,
-    /// Script weight overflow
-    ScriptWeightOverflow,
 }
 
 impl fmt::Display for TaprootBuilderError {
@@ -830,9 +834,6 @@ impl fmt::Display for TaprootBuilderError {
             TaprootBuilderError::EmptyTree => {
                 write!(f, "Called finalize on an empty tree")
             }
-            TaprootBuilderError::ScriptWeightOverflow => {
-                write!(f, "Script weight overflow in Huffman tree construction")
-            },
         }
     }
 }
@@ -1031,9 +1032,34 @@ mod test {
             (20, Script::from_hex("52").unwrap()),
             (20, Script::from_hex("53").unwrap()),
             (30, Script::from_hex("54").unwrap()),
-            (20, Script::from_hex("55").unwrap()),
+            (19, Script::from_hex("55").unwrap()),
         ];
         let tree_info = TaprootSpendInfo::with_huffman_tree(&secp, internal_key, script_weights.clone()).unwrap();
+
+        /* The resulting tree should put the scripts into a tree similar
+         * to the following:
+         *
+         *   1      __/\__
+         *         /      \
+         *        /\     / \
+         *   2   54 52  53 /\
+         *   3            55 51
+         */
+
+        for (script, length) in vec![("51", 3), ("52", 2), ("53", 2), ("54", 2), ("55", 3)] {
+            assert_eq!(
+                length,
+                tree_info
+                    .script_map
+                    .get(&(Script::from_hex(script).unwrap(), LeafVersion::default()))
+                    .expect("Present Key")
+                    .iter()
+                    .next()
+                    .expect("Present Path")
+                    .0
+                    .len()
+            );
+        }
 
         // Obtain the output key
         let output_key = tree_info.output_key();

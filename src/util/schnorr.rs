@@ -11,9 +11,10 @@
 // If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 //
 
-//! Schnorr Bitcoin Keys
+//! Schnorr Bitcoin keys.
 //!
-//! Schnorr keys used in Bitcoin, reexporting Secp256k1 Schnorr key types
+//! This module provides Schnorr keys used in Bitcoin, reexporting Secp256k1
+//! Schnorr key types.
 //!
 
 pub use secp256k1::schnorrsig::{PublicKey, KeyPair};
@@ -30,30 +31,29 @@ pub struct TweakedPublicKey(PublicKey);
 /// A trait for tweaking Schnorr public keys
 pub trait TapTweak {
     /// Tweaks an untweaked public key given an untweaked key and optional script tree merkle root.
-    /// 
-    /// This is done by using the equation Q = P + H(P|c)G, where 
+    ///
+    /// This is done by using the equation Q = P + H(P|c)G, where
     ///  * Q is the tweaked key
     ///  * P is the internal key
     ///  * H is the hash function
     ///  * c is the commitment data
     ///  * G is the generator point
-    fn tap_tweak<C: Verification>(&self, secp: Secp256k1<C>, merkle_root: Option<TapBranchHash>) -> TweakedPublicKey;
+    fn tap_tweak<C: Verification>(&self, secp: &Secp256k1<C>, merkle_root: Option<&TapBranchHash>) -> TweakedPublicKey;
 
     /// Directly convert an UntweakedPublicKey to a TweakedPublicKey
-    /// 
+    ///
     /// This method is dangerous and can lead to loss of funds if used incorrectly.
     /// Specifically, in multi-party protocols a peer can provide a value that allows them to steal.
     fn dangerous_assume_tweaked(self) -> TweakedPublicKey;
 }
 
 impl TapTweak for UntweakedPublicKey {
-    fn tap_tweak<C: Verification>(&self, secp: Secp256k1<C>, merkle_root: Option<TapBranchHash>) -> TweakedPublicKey {
+    fn tap_tweak<C: Verification>(&self, secp: &Secp256k1<C>, merkle_root: Option<&TapBranchHash>) -> TweakedPublicKey {
         // Compute the tweak
         let mut engine = TapTweakHash::engine();
         engine.input(&self.serialize());
         merkle_root.map(|hash| engine.input(&hash));
         let tweak_value: [u8; 32] = TapTweakHash::from_engine(engine).into_inner();
-            
 
         //Tweak the internal key by the tweak value
         let mut output_key = self.clone();
@@ -63,7 +63,6 @@ impl TapTweak for UntweakedPublicKey {
         } else { unreachable!("Tap tweak failed") }
     }
 
-    
     fn dangerous_assume_tweaked(self) -> TweakedPublicKey {
         TweakedPublicKey(self)
     }
@@ -75,9 +74,15 @@ impl TweakedPublicKey {
     pub fn new(key: PublicKey) -> TweakedPublicKey {
         TweakedPublicKey(key)
     }
-    
-    /// Returns the underlying public key 
+
+    /// Returns the underlying public key
     pub fn into_inner(self) -> PublicKey {
         self.0
     }
+
+    /// Returns a reference to underlying public key
+    pub fn as_inner(&self) -> &PublicKey {
+        &self.0
+    }
+
 }
